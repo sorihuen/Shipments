@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true, // Habilita decoradores
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "baseUrl": "./src", // Define la base para los alias
+    "paths": {
+      "@controllers/*": ["controllers/*"],
+      "@entities/*": ["entities/*"],
+      "@repositories/*": ["repositories/*"],
+      "@dtos/*": ["dtos/*"],
+      "@services/*": ["services/*"], // Alias para la carpeta services
+      "@routes/*": ["routes/*"],
+    }
+  },
+  "include": ["src/**/*"]
+}
