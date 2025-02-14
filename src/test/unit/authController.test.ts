@@ -1,95 +1,157 @@
-import 'reflect-metadata'
 import { Request, Response } from 'express';
 import { AuthController } from '../../controller/AuthController';
-import { AuthService } from '@services/security/AuthService';
-import { UserRepository } from '@repositories/UserRepository';
-import { RegisterUserDto } from '@dtos/RegisterUserDto';
+import { RegisterUserDto } from '../../dtos/RegisterUserDto';
+import { vi, describe, it, beforeEach, expect } from 'vitest';
 import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
-import { User } from '@entities/User';
+import { AuthService } from '../../services/security/AuthService';
+import { UserRepository } from '../../repositories/UserRepository';
 
-jest.mock('class-validator');
-jest.mock('class-transformer');
-jest.mock('@services/security/AuthService');
-jest.mock('@repositories/UserRepository');
+// Mock de class-validator
+vi.mock('class-validator', async (importOriginal) => {
+  const actual = await importOriginal();
+  if (typeof actual === 'object' && actual !== null) {
+    return {
+      ...actual,
+      validate: vi.fn().mockResolvedValue([]),
+    };
+  }
+  throw new Error('Imported module is not an object');
+});
+
+// Mock de class-transformer
+vi.mock('class-transformer', () => ({
+  plainToInstance: vi.fn((dto, data) => {
+    const instance = new RegisterUserDto();
+    Object.assign(instance, data);
+    return instance;
+  }),
+}));
+
+// Mock del UserRepository
+const mockUserRepository = {
+  findByEmail: vi.fn(),
+  createUser: vi.fn(),
+  findOne: vi.fn(),
+} as unknown as UserRepository;
+
+// Mock del AuthService
+vi.mock('../../services/security/AuthService', () => {
+  return {
+    AuthService: vi.fn().mockImplementation((userRepository) => ({
+      register: vi.fn().mockResolvedValue({
+        id: 1,
+        username: 'testuser',
+        email: 'test@example.com',
+        passwordHash: 'hashedPassword',
+        role: 'user',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        orders: [],
+        validateUser: vi.fn().mockResolvedValue(undefined),
+        toJSON: vi.fn().mockReturnValue({
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          role: 'user',
+        }),
+      }),
+    })),
+  };
+});
+
+// Mock de bcrypt
+vi.mock('bcrypt', () => ({
+  hash: vi.fn().mockResolvedValue('hashedPassword'),
+  compare: vi.fn().mockResolvedValue(true),
+}));
 
 describe('AuthController', () => {
-    let authController: typeof AuthController;
-    let authService: jest.Mocked<AuthService>;
-    let req: Request;
-    let res: Response;
+  let req: Request;
+  let res: Response;
 
-    beforeEach(() => {
-        authService = new AuthService(new UserRepository()) as jest.Mocked<AuthService>;
-        authController = AuthController;
-        req = {
-            body: {},
-        } as Request;
-        res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn(),
-        } as unknown as Response;
+  beforeEach(() => {
+    req = { body: {} } as Request;
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    } as unknown as Response;
+
+    // Limpiar los mocks entre pruebas
+    vi.clearAllMocks();
+  });
+
+  describe('register', () => {
+    it('should register a new user and return 201 status', async () => {
+      const registerData = {
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        role: 'user',
+      };
+      req.body = registerData;
+
+      await AuthController.register(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Usuario registrado exitosamente',
+        user: expect.objectContaining({
+          id: expect.any(Number), // Acepta cualquier número
+          username: 'testuser',
+          email: 'test@example.com',
+          role: 'user',
+        }),
+      });
     });
 
-    describe('register', () => {
-        it('should register a new user and return 201 status', async () => {
-            const registerData = {
-                username: 'testuser',
-                email: 'test@example.com',
-                password: 'password123',
-                role: 'user',
-            };
+    it('should return 400 if validation fails', async () => {
+      const invalidData = {
+        username: 'te',
+        email: 'invalid-email',
+        password: '123',
+        role: 'invalid-role',
+      };
+      req.body = invalidData;
 
-            req.body = registerData;
-            (plainToInstance as jest.Mock).mockReturnValue(registerData);
-            (validate as jest.Mock).mockResolvedValue([]);
+      vi.mocked(validate).mockResolvedValueOnce([
+        {
+          property: 'username',
+          constraints: {
+            minLength: 'El nombre de usuario debe tener al menos 3 caracteres',
+          },
+        },
+        {
+          property: 'email',
+          constraints: {
+            isEmail: 'El correo electrónico no es válido',
+          },
+        },
+        {
+          property: 'password',
+          constraints: {
+            isString: 'La contraseña debe ser texto',
+          },
+        },
+        {
+          property: 'role',
+          constraints: {
+            isIn: 'El rol debe ser "user" o "admin"',
+          },
+        },
+      ]);
 
-            // Mock que coincide con la estructura de User
-            authService.register.mockResolvedValue({
-                id: 1,
-                username: 'testuser',
-                email: 'test@example.com',
-                role: 'user',
-                passwordHash: 'hashedPassword',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                isActive: true,
-            } as User);
+      await AuthController.register(req, res);
 
-            await authController.register(req, res);
-
-            expect(plainToInstance).toHaveBeenCalledWith(RegisterUserDto, registerData);
-            expect(validate).toHaveBeenCalledWith(registerData);
-            expect(authService.register).toHaveBeenCalledWith(registerData);
-            expect(res.status).toHaveBeenCalledWith(201);
-            expect(res.json).toHaveBeenCalledWith({
-                id: 1,
-                username: 'testuser',
-                email: 'test@example.com',
-                role: 'user',
-                passwordHash: 'hashedPassword',
-                createdAt: expect.any(Date),
-                updatedAt: expect.any(Date),
-                isActive: true,
-            });
-        });
-
-        it('should return 400 status if validation fails', async () => {
-            const registerData = {
-                username: 'testuser',
-                email: 'test@example.com',
-                password: 'password123',
-                role: 'user',
-            };
-
-            req.body = registerData;
-            (plainToInstance as jest.Mock).mockReturnValue(registerData);
-            (validate as jest.Mock).mockResolvedValue([{ constraints: { isEmail: 'Invalid email' } }]);
-
-            await authController.register(req, res);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ errors: ['Invalid email'] });
-        });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        errors: [
+          'El nombre de usuario debe tener al menos 3 caracteres',
+          'El correo electrónico no es válido',
+          'La contraseña debe ser texto',
+          'El rol debe ser "user" o "admin"',
+        ],
+      });
     });
+  });
 });

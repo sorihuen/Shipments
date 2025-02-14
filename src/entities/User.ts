@@ -1,4 +1,3 @@
-// User.ts
 import { 
     Entity, 
     PrimaryGeneratedColumn, 
@@ -7,56 +6,56 @@ import {
     UpdateDateColumn,
     BeforeInsert,
     BeforeUpdate,
-    Index
+    Index,
+    OneToMany 
 } from "typeorm";
 import { IsEmail, Length, IsString } from "class-validator";
+import { Order } from './Order';
 
-@Entity('users') // Mejor práctica usar plural para nombres de tablas
+@Entity('users')
 export class User {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn({ type: 'int' })
     id!: number;
 
-    @Column({ length: 50 })
+    @Column({ type: 'varchar', length: 50 })
     @Length(3, 50, { message: 'El username debe tener entre 3 y 50 caracteres' })
     @IsString()
     username!: string;
 
-    @Column({ length: 100, unique: true })
+    @Column({ type: 'varchar', length: 100, unique: true })
     @Index()
     @IsEmail({}, { message: 'El email debe ser válido' })
     email!: string;
 
-    @Column({ length: 255, select: false }) // No seleccionar por defecto en consultas
+    @Column({ type: 'varchar', length: 255, select: false })
     passwordHash!: string;
 
-    @Column({ 
-        length: 50
-    })
+    @Column({ type: 'varchar', length: 50 })
     role!: string;
 
-    @CreateDateColumn()
+    @CreateDateColumn({ type: 'timestamp' })
     createdAt!: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ type: 'timestamp' })
     updatedAt!: Date;
 
-    @Column({ default: true })
+    @Column({ type: 'boolean', default: true })
     isActive!: boolean;
 
-    @Column({ nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
     lastLoginAt?: Date;
 
-    // Hooks
+    @OneToMany(() => Order, (order) => order.user)
+    orders!: Order[];
+
     @BeforeInsert()
     @BeforeUpdate()
     async validateUser() {
-        // Aquí puedes añadir validaciones personalizadas
         if (this.email) {
             this.email = this.email.toLowerCase();
         }
     }
 
-    // Método para ocultar campos sensibles
     toJSON() {
         const { passwordHash, ...userWithoutPassword } = this;
         return userWithoutPassword;

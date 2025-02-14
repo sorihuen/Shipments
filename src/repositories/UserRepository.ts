@@ -8,10 +8,10 @@ export class UserRepository {
         return await this.userRepository.save(user);
     }
 
+        // En UserRepository
     async findByEmail(email: string): Promise<User | null> {
-        return await this.userRepository.findOne({ where: { email } });
+        return this.userRepository.findOneBy({ email });
     }
-
     // Método findOne genérico
     async findOne(options: any): Promise<User | null> {
         return await this.userRepository.findOne(options);

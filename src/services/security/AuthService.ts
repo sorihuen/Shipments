@@ -1,8 +1,8 @@
 import * as bcrypt from "bcrypt";
 import { sign, SignOptions } from "jsonwebtoken";
-import { User } from "@entities/User";
-import { UserRepository } from "@repositories/UserRepository";
-import { RegisterUserDto } from '@dtos/RegisterUserDto';
+import { User } from "../../entities/User";
+import { UserRepository } from "../../repositories/UserRepository";
+import { RegisterUserDto } from '../../dtos/RegisterUserDto';
 import dotenv from "dotenv";
 
 // Cargar variables de entorno
