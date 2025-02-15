@@ -31,6 +31,7 @@ export class RouteRepository {
     async findOneOrFail(routeId: number) {
         return await this.routeRepository.findOneOrFail({
             where: { id: routeId },
+            relations: ['drivers'], // Carga los transportistas asignados a la ruta
         });
     }
 
@@ -40,20 +41,25 @@ export class RouteRepository {
      * @param driverId - ID del transportista.
      */
     async addDriverToRoute(routeId: number, driverId: number): Promise<void> {
+        // Busca la ruta y carga los transportistas asignados
         const route = await this.routeRepository.findOneOrFail({
             where: { id: routeId },
             relations: ['drivers'], // Carga los transportistas asignados a la ruta
         });
 
+        // Busca el transportista
         const driver = await AppDataSource.getRepository(Driver).findOneOrFail({
             where: { id: driverId },
         });
 
-        // Agrega el transportista a la lista de drivers de la ruta (si no está ya incluido)
+        // Verifica si el transportista ya está asignado a la ruta
         if (!route.drivers.some((d) => d.id === driver.id)) {
-            route.drivers.push(driver);
-            await this.routeRepository.save(route);
+            route.drivers.push(driver); // Agrega el transportista a la lista
+            await this.routeRepository.save(route); // Guarda los cambios en la ruta
         }
+
+        // Actualiza la disponibilidad del transportista a false (no disponible)
+        await AppDataSource.getRepository(Driver).update(driverId, { isAvailable: false });
     }
 
     /**

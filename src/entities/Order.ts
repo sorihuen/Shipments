@@ -2,14 +2,21 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 import { User } from './User';
 import { Route } from './Route';
-import { Driver } from './Drive'; // Asegúrate de que el nombre del archivo sea correcto
+import { Driver } from './Drive';
+
+
+export enum OrderStatus {
+    EN_ESPERA = 'En espera',
+    EN_TRANSITO = 'En tránsito',
+    ENTREGADO = 'Entregado',
+}
 
 @Entity()
 export class Order {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    // Relación ManyToOne con User
+    // Relación ManyToOne con User (quien crea la orden)
     @ManyToOne(() => User, (user) => user.orders)
     user: User;
 
@@ -39,9 +46,29 @@ export class Order {
     @Column({ type: 'varchar', length: 255, nullable: false })
     returnAddress: string;
 
+    // Datos del destinatario
+    @Column({ type: 'varchar', length: 255, nullable: false })
+    recipientName: string; // Nombre del destinatario
+
+    @Column({ type: 'varchar', length: 20, nullable: false })
+    recipientPhone: string; // Teléfono del destinatario
+
+    @Column({ type: 'varchar', length: 255, nullable: false })
+    recipientEmail: string; // Email del destinatario
+
+    // Datos del remitente externo (opcionales)
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    senderName?: string; // Nombre del remitente externo
+
+    @Column({ type: 'varchar', length: 20, nullable: true })
+    senderPhone?: string; // Teléfono del remitente externo
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    senderEmail?: string; // Email del remitente externo
+
     // Estado de la orden
-    @Column({ type: 'varchar', length: 50, default: 'En espera' })
-    status: string;
+    @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.EN_ESPERA })
+    status: OrderStatus;
 
     // Timestamps
     @CreateDateColumn()
@@ -49,4 +76,7 @@ export class Order {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @Column({ type: 'timestamp', nullable: true })
+    assignedAt?: Date;
 }

@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import authRoutes from "../src/routes/AuthRoutes";
 import orderRoutes from "../src/routes/OrderRoutes";
 import routeRouter from "../src/routes/RoutRoutes";
+import driveRoute from "../src/routes/DriverRoutes";
 import { setupSwagger } from "../src/Config/swagger";
 import { AppDataSource } from "./Config/data-source";
+import { connectRedis } from './Config/redis.config';
 dotenv.config();
 
 // Validar variables de entorno en producción
@@ -31,26 +33,20 @@ setupSwagger(app);
 
 // Registrar las rutas
 
-app.use("/auth", authRoutes); // Rutas de autenticación
+app.use('/auth', authRoutes); // Rutas de autenticación
 app.use('/api/orders', orderRoutes); // Rutas de órdenes
 app.use('/api/routes', routeRouter); //Rutas de las rutas
+app.use('/api/drive', driveRoute ); //Rutas de los Driver
 
-// // Listar rutas registradas
-// console.log('Rutas registradas:');
-// (app._router.stack as any[]).forEach(layer => {
-//     if (layer.route) {
-//         const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
-//         console.log(`  [${methods}] ${layer.route.path}`);
-//     } else if (layer.name === 'router') {
-//         layer.handle.stack.forEach((nestedLayer: any) => {
-//             if (nestedLayer.route) {
-//                 const methods = Object.keys(nestedLayer.route.methods).join(', ').toUpperCase();
-//                 console.log(`  [${methods}] /api/orders${nestedLayer.route.path}`);
-//             }
-//         });
-//     }
-// });
-
+// Conexión a Redis
+(async () => {
+    try {
+        await connectRedis(); // Asegura que Redis esté conectado
+    } catch (error) {
+        console.error('No se pudo conectar a Redis:', error);
+        process.exit(1); // Detiene la aplicación si Redis no está disponible
+    }
+})();
 
 // Inicializar DataSource
 AppDataSource.initialize()

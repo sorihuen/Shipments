@@ -3,7 +3,6 @@ import { AuthController } from '../../controller/AuthController';
 import { RegisterUserDto } from '../../dtos/RegisterUserDto';
 import { vi, describe, it, beforeEach, expect } from 'vitest';
 import { validate } from 'class-validator';
-import { AuthService } from '../../services/security/AuthService';
 import { UserRepository } from '../../repositories/UserRepository';
 
 // Mock de class-validator

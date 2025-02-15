@@ -16,7 +16,36 @@ export class DriverRepository {
             where: { id: driverId },
         });
     }
+    /**
+     * Crea un nuevo transportista.
+     * @param name - Nombre del transportista.
+     * @param vehicleCapacity - Capacidad máxima del vehículo (en kg).
+     * @returns El transportista creado.
+     */
+    async createDriver(name: string, vehicleCapacity: number): Promise<Driver> {
+        const newDriver = this.driverRepository.create({
+            name,
+            vehicleCapacity,
+            isAvailable: true, // Por defecto, el transportista está disponible
+        });
+        return await this.driverRepository.save(newDriver);
+    }
+    /**
+     * Lista todos los transportistas con sus rutas asignadas.
+     * @param isAvailable - Filtro opcional para listar transportistas disponibles o no disponibles.
+     * @returns Lista de transportistas filtrados.
+     */
+    async getAllDrivers(isAvailable?: boolean): Promise<Driver[]> {
+        const queryOptions: any = {
+            relations: ['routes'], // Carga las rutas asignadas a cada transportista
+        };
 
+        if (isAvailable !== undefined) {
+            queryOptions.where = { isAvailable }; // Filtra por disponibilidad si se proporciona
+        }
+
+        return await this.driverRepository.find(queryOptions);
+    }
     /**
      * Verifica si un transportista está disponible.
      * @param driverId - ID del transportista.
@@ -29,12 +58,5 @@ export class DriverRepository {
         return driver.isAvailable;
     }
 
-    /**
-     * Actualiza la disponibilidad de un transportista.
-     * @param driverId - ID del transportista.
-     * @param isAvailable - Nuevo estado de disponibilidad.
-     */
-    async updateAvailability(driverId: number, isAvailable: boolean): Promise<void> {
-        await this.driverRepository.update(driverId, { isAvailable });
-    }
+
 }
