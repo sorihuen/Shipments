@@ -1,33 +1,54 @@
-import { DataSource } from "typeorm";
-import dotenv from 'dotenv';
-import { User } from "../entities/User";
-import { Order } from "../entities/Order";
-import { Driver } from "../entities/Drive";
-import { Route } from "../entities/Route";
+// Importar las dependencias necesarias
+import { DataSource } from "typeorm"; // Importar DataSource de TypeORM para configurar la conexión a la base de datos
+import dotenv from 'dotenv'; // Importar dotenv para cargar variables de entorno desde un archivo .env
+import { User } from "../entities/User"; // Importar la entidad User
+import { Order } from "../entities/Order"; // Importar la entidad Order
+import { Driver } from "../entities/Drive"; // Importar la entidad Driver
+import { Route } from "../entities/Route"; // Importar la entidad Route
 
-// Cargar variables de entorno
+// Cargar las variables de entorno desde el archivo .env
 dotenv.config();
 
-// Obtener la cadena de conexión desde las variables de entorno
+// Obtener la cadena de conexión y otras variables de entorno
 const {
-    DATABASE_URL = '', // Cadena de conexión completa de Neon
-    NODE_ENV = 'development'
+    DATABASE_URL = '', // Cadena de conexión completa para la base de datos (proporcionada por Neon)
+    NODE_ENV = 'development' // Entorno de ejecución (development, production, etc.)
 } = process.env;
 
+// Configuración de la fuente de datos (DataSource) de TypeORM
 export const AppDataSource = new DataSource({
-    type: "postgres",
-    url: DATABASE_URL, // Usar la cadena de conexión completa
-    synchronize: NODE_ENV === 'development', // Solo habilitar en desarrollo
-    logging: ["error"], // Registrar errores
-    entities: [User, Order, Driver, Route], // Entidades de tu aplicación
-    migrations: [], // Migraciones (si las usas)
-    subscribers: [], // Suscriptores (si los usas)
-    ssl: NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // Configuración SSL para producción
+    type: "postgres", // Tipo de base de datos: PostgreSQL
+    url: DATABASE_URL, // Usar la cadena de conexión completa (proporcionada por Neon)
+    
+    // Sincronización automática (solo en desarrollo)
+    // WARNING: No usar en producción, ya que puede sobrescribir datos accidentalmente
+    synchronize: NODE_ENV === 'development', 
+    
+    // Configuración de registro de errores
+    logging: ["error"], // Registrar solo errores (puedes agregar "query" para registrar todas las consultas)
+    
+    // Entidades de la aplicación
+    entities: [User, Order, Driver, Route], // Lista de entidades que representan las tablas en la base de datos
+    
+    // Migraciones (opcional)
+    migrations: [], // Archivos de migración para gestionar cambios en el esquema de la base de datos
+    
+    // Suscriptores (opcional)
+    subscribers: [], // Suscriptores para eventos de TypeORM (por ejemplo, hooks antes/después de guardar datos)
+    
+    // Configuración SSL para conexiones seguras
+    ssl: NODE_ENV === 'production' 
+        ? { rejectUnauthorized: false } // Permitir conexiones sin verificar el certificado SSL en producción
+        : false, // Desactivar SSL en desarrollo (si usas una base de datos local sin SSL)
+    
+    // Configuración de caché
     cache: {
-        duration: 30000 // Cache de 30 segundos
+        duration: 30000 // Duración de la caché en milisegundos (30 segundos)
     },
-    poolSize: 10, // Tamaño del pool de conexiones
-    maxQueryExecutionTime: 1000 // Alerta si una consulta toma más de 1 segundo
+    
+    // Configuración del pool de conexiones
+    poolSize: 10, // Número máximo de conexiones en el pool (ajusta según tus necesidades)
+    
+    // Tiempo máximo de ejecución de consultas
+    maxQueryExecutionTime: 5000 // Alerta si una consulta toma más de 1 segundo (en milisegundos)
 });
-
-//postgresql://neondb_owner:npg_eM1tqGJgxAC9@ep-damp-wildflower-a5cdp56o-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
