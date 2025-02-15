@@ -1,4 +1,8 @@
 // src/controllers/DriverController.ts
+/* El controller invoca correctamente los métodos del service.
+Se validan las entradas (por ejemplo, el nombre y la capacidad).
+Se formatea correctamente la respuesta (códigos de estado y cuerpo de la respuesta). */
+
 import { Request, Response } from 'express';
 import { DriverService } from '../services/DriveService';
 
