@@ -1,5 +1,5 @@
 // src/entities/Route.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany, JoinTable } from 'typeorm';
 import { Driver } from './Drive'; // Asegúrate de que el nombre del archivo sea correcto
 import { Order } from './Order'; // Asegúrate de que el nombre del archivo sea correcto
 
@@ -19,6 +19,17 @@ export class Route {
 
     // Relación muchos a muchos con Driver
     @ManyToMany(() => Driver, (driver) => driver.routes)
+    @JoinTable({
+        name: 'route_drivers', // Nombre explícito de la tabla intermedia
+        joinColumn: {
+            name: 'route_id', // Columna que referencia a Route
+            referencedColumnName: 'id',
+        },
+        inverseJoinColumn: {
+            name: 'driver_id', // Columna que referencia a Driver
+            referencedColumnName: 'id',
+        },
+    })
     drivers: Driver[];
 
     // Relación uno a muchos con Order

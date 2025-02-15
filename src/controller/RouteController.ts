@@ -87,9 +87,24 @@ export class RouteController {
      */
     async assignDriverToRoute(req: Request, res: Response) {
         try {
-            const { routeId, driverId } = req.body;
-            const result = await this.routeService.addDriverToRoute(routeId, driverId);
-            res.status(200).json(result);
+            const { routeId } = req.params; // Obtiene el ID de la ruta de los parámetros de la URL
+            const { driverId } = req.body; // Obtiene el ID del transportista del cuerpo de la solicitud
+
+            // Validar que el ID de la ruta sea un número
+            const id = Number(routeId);
+            if (isNaN(id)) {
+                return res.status(400).json({ error: 'El ID de la ruta debe ser un número válido.' });
+            }
+
+            // Validar que el ID del transportista sea un número
+            const driverIdNumber = Number(driverId);
+            if (isNaN(driverIdNumber)) {
+                return res.status(400).json({ error: 'El ID del transportista debe ser un número válido.' });
+            }
+
+            // Asignar el transportista a la ruta
+            const result = await this.routeService.addDriverToRoute(id, driverIdNumber);
+            res.status(200).json(result); // Devuelve un mensaje de éxito
         } catch (error) {
             if (error instanceof Error) {
                 res.status(400).json({ error: error.message });

@@ -18,7 +18,6 @@ export class Driver {
 
     // Relación muchos a muchos con Route
     @ManyToMany(() => Route, (route) => route.drivers)
-    @JoinTable() // Indica que esta entidad es la dueña de la relación
     routes: Route[];
 
     // Relación uno a muchos con Order

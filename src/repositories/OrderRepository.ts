@@ -1,22 +1,16 @@
-// src/repositories/order.repository.ts
+// src/repositories/OrderRepository.ts
 import { AppDataSource } from "../Config/data-source";
-import { Order } from '../entities/Order';
-import { User } from '../entities/User';
-import { Driver } from '../entities/Drive';
-import { Route } from '../entities/Route';
+import { Order } from "../entities/Order";
+import { User } from "../entities/User";
+import { Route } from "../entities/Route";
+import { OrderStatus } from "../entities/Order";
+import { redisClient, connectRedis } from "../Config/redis.config";
 
 export class OrderRepository {
     private orderRepository = AppDataSource.getRepository(Order);
 
     /**
      * Crea una nueva orden en la base de datos.
-     * @param user - El usuario que crea la orden.
-     * @param weight - Peso del paquete en kg.
-     * @param dimensions - Dimensiones del paquete (largo, ancho, alto).
-     * @param productType - Tipo de producto (ej. electrónico, ropa, etc.).
-     * @param destinationAddress - Dirección de destino del envío.
-     * @param returnAddress - Dirección de retorno del envío.
-     * @returns La orden creada.
      */
     async createOrder(
         user: User,
@@ -25,95 +19,78 @@ export class OrderRepository {
         productType: string,
         destinationAddress: string,
         returnAddress: string,
-    ) {
-        const newOrder = this.orderRepository.create({
+        recipientName: string,
+        recipientPhone: string,
+        recipientEmail: string,
+        senderName?: string,
+        senderPhone?: string,
+        senderEmail?: string
+    ): Promise<Order> {
+        const order = this.orderRepository.create({
             user,
             weight,
             dimensions,
             productType,
             destinationAddress,
             returnAddress,
-            status: 'En espera', // Estado inicial de la orden
+            recipientName,
+            recipientPhone,
+            recipientEmail,
+            senderName,
+            senderPhone,
+            senderEmail,
+            status: OrderStatus.EN_ESPERA,
         });
-        return await this.orderRepository.save(newOrder);
-    }
-
-    /**
-     * Busca todas las órdenes asociadas a un usuario específico.
-     * @param userId - ID del usuario.
-     * @returns Lista de órdenes del usuario con sus relaciones cargadas.
-     */
-    async findOrdersByUser(userId: string) {
-        const userIdAsNumber = Number(userId); // Convierte el ID a número si es necesario
-        return await this.orderRepository.find({
-            where: {
-                user: {
-                    id: userIdAsNumber,
-                },
-            },
-            relations: ['user'], // Carga la relación con el usuario
-        });
+        return await this.orderRepository.save(order);
     }
 
     /**
      * Busca todas las órdenes que tienen un estado específico.
-     * @param status - Estado de la orden (ej. "En espera", "Asignado").
-     * @returns Lista de órdenes con el estado especificado.
      */
-    async findOrdersByStatus(status: string) {
+    async findOrdersByStatus(status: OrderStatus): Promise<Order[]> {
         return await this.orderRepository.find({ where: { status } });
     }
 
     /**
      * Cuenta el número total de órdenes en la base de datos.
-     * @returns El número total de órdenes.
      */
-    async countOrders() {
+    async countOrders(): Promise<number> {
         return await this.orderRepository.count();
     }
 
     /**
      * Actualiza el estado de una orden específica.
-     * @param orderId - ID de la orden.
-     * @param newStatus - Nuevo estado de la orden (ej. "Asignado", "Entregado").
      */
-    async updateOrderStatus(orderId: string, newStatus: string) {
+    async updateOrderStatus(orderId: string, newStatus: OrderStatus): Promise<void> {
         await this.orderRepository.update(orderId, { status: newStatus });
+
+        // Almacena el estado en Redis con un TTL de 5 minutos
+        const redisKey = `order:${orderId}:status`;
+        await redisClient.set(redisKey, newStatus, { EX: 300 }); // Expira en 300 segundos (5 minutos)
     }
 
     /**
      * Asigna un transportista y una ruta a una orden específica.
-     * @param orderId - ID de la orden.
-     * @param driverId - ID del transportista.
-     * @param routeId - ID de la ruta.
-     * @returns La orden actualizada con el transportista y la ruta asignados.
-     * @throws Error si la orden ya ha sido asignada o no existe.
      */
-    async assignDriverAndRoute(orderId: string, driverId: number, routeId: number): Promise<Order> {
-        // Busca la orden y carga las relaciones necesarias
-        const order = await this.orderRepository.findOneOrFail({
-            where: { id: orderId },
-            relations: ['driver', 'route'],
-        });
-
-        // Verifica que la orden esté en estado "En espera"
-        if (order.status !== 'En espera') {
-            throw new Error('La orden ya ha sido asignada.');
+    async assignRoute(orderId: string, routeId: number): Promise<Order> {
+        const order = await this.findOneBy({ id: orderId });
+        if (!order) {
+            throw new Error("Orden no encontrada.");
         }
 
-        // Asigna el transportista y la ruta
-        order.driver = { id: driverId } as Driver; // Asigna solo el ID del transportista
-        order.route = { id: routeId } as Route;   // Asigna solo el ID de la ruta
-        order.status = 'Asignado';               // Cambia el estado de la orden
+        if (order.status !== OrderStatus.EN_ESPERA) {
+            throw new Error("La orden ya ha sido asignada.");
+        }
 
-        // Guarda los cambios en la base de datos
+        order.route = { id: routeId } as Route;
+        order.status = OrderStatus.EN_TRANSITO;
+        order.assignedAt = new Date();
+
         return await this.orderRepository.save(order);
     }
 
     /**
      * Busca todas las órdenes asignadas a un transportista específico.
-     * @param driverId - ID del transportista.
-     * @returns Lista de órdenes asignadas al transportista con sus relaciones cargadas.
      */
     async findOrdersByDriver(driverId: number): Promise<Order[]> {
         return await this.orderRepository.find({
@@ -122,7 +99,33 @@ export class OrderRepository {
                     id: driverId,
                 },
             },
-            relations: ['driver', 'route'], // Carga las relaciones con el transportista y la ruta
+            relations: ["driver", "route"],
         });
     }
+
+    /**
+     * Lista todas las órdenes con sus relaciones cargadas, con opción de filtrar por estado.
+     */
+    async getAllOrders(status?: OrderStatus): Promise<Order[]> {
+        const query = this.orderRepository
+            .createQueryBuilder("order")
+            .leftJoinAndSelect("order.user", "user")
+            .leftJoinAndSelect("order.route", "route")
+            .leftJoinAndSelect("route.drivers", "drivers");
+
+        if (status) {
+            query.where("order.status = :status", { status });
+        }
+
+        return await query.getMany();
+    }
+
+    /**
+     * Encuentra una orden por condiciones específicas.
+     */
+    async findOneBy(options: any): Promise<Order | null> {
+        return await this.orderRepository.findOneBy(options);
+    }
+
+    
 }
