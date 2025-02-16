@@ -35,7 +35,7 @@ Antes de ejecutar este proyecto, asegúrate de tener instalado:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/shipment.git
+git clone https://github.com/sorihuen/Shipments.git
 cd shipment
 ```
 
@@ -77,13 +77,6 @@ Para ejecutar el proyecto con recarga automática:
 npm run dev
 ```
 
-### Modo producción
-
-```bash
-npm run build
-npm start
-```
-
 ## 🧪 Pruebas
 
 El proyecto utiliza **Vitest** para pruebas unitarias y de integración.
@@ -112,10 +105,11 @@ http://localhost:3000/api-docs
 │   ├── routes/        # Definición de rutas
 │   ├── services/      # Lógica de negocio
 │   ├── utils/         # Utilidades
+|   ├── test/          # Pruebas automatizadas
 │   ├── app.ts         # Configuración de Express
-│   └── index.ts       # Punto de entrada
-├── tests/             # Pruebas automatizadas
-├── .env.example       # Ejemplo de variables de entorno
+│   
+├── testsRedis/         # Pruebas Redis
+├── .env                # Ejemplo de variables de entorno
 ├── package.json
 └── README.md
 ```
