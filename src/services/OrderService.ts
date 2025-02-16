@@ -1,18 +1,24 @@
 // src/services/OrderService.ts
 import { OrderRepository } from "../repositories/OrderRepository";
 import { RouteRepository } from "../repositories/RouteRepository";
+import { DriverRepository } from "../repositories/DriverRepository";
+import { AppDataSource } from "../Config/data-source";
 import { validateAddress } from "../utils/geocoding";
 import { User } from "../entities/User";
+import { Driver } from "../entities/Drive";
 import { OrderStatus } from "../entities/Order";
 import { redisClient } from "../Config/redis.config";
+import { Order } from "../entities/Order";
 
 export class OrderService {
   private orderRepository: OrderRepository;
   private routeRepository: RouteRepository;
+  private driverRepository: DriverRepository;
 
   constructor() {
     this.orderRepository = new OrderRepository();
     this.routeRepository = new RouteRepository();
+    this.driverRepository = new DriverRepository();
   }
 
   /**
@@ -32,6 +38,18 @@ export class OrderService {
     senderPhone: string,
     senderEmail: string
   ) {
+    // Validar campos obligatorios
+    if (
+      !dimensions ||
+      !dimensions.width ||
+      !dimensions.height ||
+      !dimensions.length
+    ) {
+      throw new Error(
+        "Las dimensiones del paquete son requeridas y deben incluir 'width', 'height' y 'length'"
+      );
+    }
+
     // Validar direcciones
     const isDestinationAddressValid = await validateAddress(destinationAddress);
     if (!isDestinationAddressValid) {
@@ -66,43 +84,111 @@ export class OrderService {
     // Opcional: Almacenar la orden en una lista específica para su estado
     const statusKey = `order:status:${initialStatus}`;
     await redisClient.sAdd(statusKey, order.id); // Usamos un conjunto (SET) para evitar duplicados
-
     console.log(
       `Orden creada y estado inicial almacenado en Redis: ${initialStatus}`
     );
 
     return order;
   }
-
   /**
    * Asigna una ruta a una orden específica y actualiza su estado en Redis.
    */
   async assignRoute(orderId: string, routeId: number) {
-    // Actualizar la orden en la base de datos (asignar la ruta)
-    const updatedOrder = await this.orderRepository.assignRoute(
-      orderId,
-      routeId
-    );
+    // Obtener la orden con la ruta y los conductores asociados
+    const order = await this.orderRepository.findOneWithRelations(orderId);
+    if (!order) {
+      throw new Error("La orden no existe");
+    }
 
-    // Obtener el estado anterior desde Redis
+    // Buscar la ruta con los conductores asignados
+    const route = await this.routeRepository.findOneWithDrivers(routeId);
+
+    if (!route) {
+      throw new Error("La ruta no existe");
+    }
+    if (!route.drivers || route.drivers.length === 0) {
+      throw new Error("La ruta no tiene conductores asignados");
+    }
+
+    // Seleccionar el primer conductor relacionado con la ruta
+    const assignedDriver = route.drivers[0]; // Selecciona el primer conductor de la lista
+
+    if (!assignedDriver) {
+      console.log(
+        "No hay conductores relacionados con esta ruta:",
+        route.drivers
+      );
+      throw new Error("No hay conductores relacionados con esta ruta");
+    }
+
+    // Validar que el peso total no exceda la capacidad del vehículo
+    const totalWeight = assignedDriver.assignedWeight + order.weight;
+    if (totalWeight > assignedDriver.vehicleCapacity) {
+      throw new Error(
+        `El peso total (${totalWeight} kg) supera la capacidad del vehículo (${assignedDriver.vehicleCapacity} kg)`
+      );
+    }
+
+    // Actualizar el peso asignado al conductor
+    assignedDriver.assignedWeight = totalWeight;
+
+    // Asignar ruta y conductor a la orden
+    order.route = route;
+    order.driver = assignedDriver;
+    order.status = OrderStatus.EN_TRANSITO;
+    order.assignedAt = new Date();
+
+    // Guardar en la base de datos
+    await this.driverRepository.save(assignedDriver); // Guardar el conductor actualizado
+    const updatedOrder = await this.orderRepository.saveOrder(order);
+
+    // Actualizar el estado en Redis
     const redisKey = `order:${orderId}:status`;
     const oldStatus = await redisClient.get(redisKey);
-
-    // Actualizar el estado en Redis a "En tránsito"
     const newStatus = "En tránsito";
-    await redisClient.set(redisKey, newStatus, { EX: 3600 }); // TTL de 1 hora
-
-    // Actualizar las listas de estados en Redis
+    await redisClient.set(redisKey, newStatus, { EX: 3600 });
     if (oldStatus) {
-      const oldStatusKey = `order:status:${oldStatus}`;
-      await redisClient.sRem(oldStatusKey, orderId); // Elimina la orden del estado anterior
+      await redisClient.sRem(`order:status:${oldStatus}`, orderId);
     }
-    const newStatusKey = `order:status:${newStatus}`;
-    await redisClient.sAdd(newStatusKey, orderId); // Agrega la orden al nuevo estado
-
+    await redisClient.sAdd(`order:status:${newStatus}`, orderId);
     console.log(`Estado actualizado en Redis: ${newStatus}`);
 
-    return updatedOrder;
+    // Devolver la orden completa, la ruta y el conductor asignado
+    return {
+      message: "Orden asignada exitosamente",
+      order: {
+        id: updatedOrder.id,
+        weight: updatedOrder.weight,
+        dimensions: updatedOrder.dimensions,
+        productType: updatedOrder.productType,
+        destinationAddress: updatedOrder.destinationAddress,
+        returnAddress: updatedOrder.returnAddress,
+        recipientName: updatedOrder.recipientName,
+        recipientPhone: updatedOrder.recipientPhone,
+        recipientEmail: updatedOrder.recipientEmail,
+        senderName: updatedOrder.senderName,
+        senderPhone: updatedOrder.senderPhone,
+        senderEmail: updatedOrder.senderEmail,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+        updatedAt: updatedOrder.updatedAt,
+        assignedAt: updatedOrder.assignedAt,
+        deliveredAt: updatedOrder.deliveredAt,
+      },
+      route: {
+        id: route.id,
+        name: route.name,
+        origin: route.origin,
+        destination: route.destination,
+      },
+      driver: {
+        id: assignedDriver.id,
+        name: assignedDriver.name,
+        vehicleCapacity: assignedDriver.vehicleCapacity,
+        isAvailable: assignedDriver.isAvailable,
+        assignedWeight: assignedDriver.assignedWeight, // Peso total asignado
+      },
+    };
   }
 
   /**
@@ -112,79 +198,145 @@ export class OrderService {
     return await this.orderRepository.getAllOrders(status);
   }
 
-  /**
-   * Obtiene el estado de una orden desde Redis o la base de datos.
+  /***********************************************************************
+   * Actualiza el estado de una orden específica.
    */
-  async getOrderStatus(orderId: string): Promise<OrderStatus | null> {
-    const redisKey = `order:${orderId}:status`;
 
-    // Intenta obtener el estado desde Redis
-    const cachedStatus = await redisClient.get(redisKey);
-    if (cachedStatus) {
-      return cachedStatus as OrderStatus; // Devuelve el estado desde Redis
-    }
-
-    // Si no está en Redis, consulta la base de datos
-    const order = await this.orderRepository.findOneBy({ id: orderId }); // Usa findOneBy
+  async updateOrderStatus(
+    orderId: string,
+    newStatus: OrderStatus
+  ): Promise<{ message: string }> {
+    // Buscar la orden con relaciones necesarias
+    const order = await this.orderRepository.findOneWithRelations(orderId);
     if (!order) {
       throw new Error("Orden no encontrada.");
     }
-
-    // Almacena el estado en Redis para futuras consultas
-    await redisClient.set(redisKey, order.status, { EX: 300 }); // Expira en 300 segundos (5 minutos)
-
-    return order.status;
+  
+    // Validar que el nuevo estado sea "Entregado"
+    if (newStatus !== OrderStatus.ENTREGADO) {
+      throw new Error("Solo se permite cambiar el estado a 'Entregado'.");
+    }
+  
+    // Validar que la orden esté en estado "En tránsito"
+    if (order.status !== OrderStatus.EN_TRANSITO) {
+      return {
+        message: "No se realizó ningún cambio. La orden no está en estado 'En tránsito'.",
+      };
+    }
+  
+    // Verificar que la orden tenga una ruta y conductores asignados
+    if (!order.route || !order.route.drivers || order.route.drivers.length === 0) {
+      throw new Error("La orden no tiene conductor asignado.");
+    }
+  
+    // Seleccionar el primer conductor asignado a la ruta
+    const driver = await this.driverRepository.findOneOrFail(order.route.drivers[0].id);
+  
+    // Actualizar el peso asignado al conductor
+    driver.assignedWeight -= order.weight;
+  
+    // Actualizar el estado y la fecha de entrega de la orden en la base de datos
+    await AppDataSource.getRepository(Order).update(orderId, {
+      status: newStatus,
+      deliveredAt: new Date(),
+    });
+  
+    // Guardar el conductor actualizado
+    await this.driverRepository.save(driver);
+  
+    // Actualizar el estado en Redis y sus listas
+    const redisKey = `order:${orderId}:status`;
+    const oldStatus = await redisClient.get(redisKey);
+    await redisClient.set(redisKey, newStatus, { EX: 3600 });
+  
+    if (oldStatus) {
+      const oldStatusKey = `order:status:${oldStatus}`;
+      await redisClient.sRem(oldStatusKey, orderId);
+    }
+  
+    const newStatusKey = `order:status:${newStatus}`;
+    await redisClient.sAdd(newStatusKey, orderId);
+  
+    // Invalidar la caché de la orden
+    await redisClient.del(`order:${orderId}`);
+  
+    return { message: "Estado actualizado exitosamente" };
   }
-
-  /**
-   * Actualiza el estado de una orden específica.
+  
+  
+  
+  /*******************************************************
+   * Obtiene órdenes específicas o filtra por estado.
+   * @param orderId - ID de la orden (opcional).
+   * @param status - Estado de la orden (opcional).
    */
-  /**
- * Actualiza el estado de una orden específica.
- */
-async updateOrderStatus(
-  orderId: string,
-  newStatus: OrderStatus
-): Promise<{ message: string }> {
-  // Busca la orden en la base de datos
-  const order = await this.orderRepository.findOneBy({ id: orderId });
-  if (!order) {
-    throw new Error("Orden no encontrada.");
+  async getOrderById(orderId: string): Promise<Order | null> {
+    const redisKey = `order:${orderId}`;
+    // Intenta obtener la orden desde Redis
+    const cachedOrder = await redisClient.get(redisKey);
+    if (cachedOrder) {
+      console.log(`Orden obtenida desde Redis: ${cachedOrder}`);
+      return JSON.parse(cachedOrder); // Deserializa el objeto JSON
+    }
+    console.log(
+      "Orden no encontrada en Redis. Consultando la base de datos..."
+    );
+    // Usa QueryBuilder del repositorio predeterminado
+    const order = await AppDataSource.getRepository(Order)
+      .createQueryBuilder("order")
+      .leftJoinAndSelect("order.user", "user")
+      .leftJoinAndSelect("order.route", "route")
+      .leftJoinAndSelect("route.drivers", "drivers")
+      .leftJoinAndSelect("order.driver", "driver") // Cargar la relación directa con el conductor
+      .where("order.id = :orderId", { orderId })
+      .getOne();
+
+    if (!order) {
+      return null;
+    }
+
+    // Almacena la orden en Redis para futuras consultas
+    await redisClient.set(redisKey, JSON.stringify(order), { EX: 3600 }); // Expira en 3600 segundos (1 hora)
+    console.log(`Orden almacenada en Redis: ${JSON.stringify(order)}`);
+    return order;
   }
 
-  // Validar que el nuevo estado sea "Entregado"
-  if (newStatus !== OrderStatus.ENTREGADO) {
-    throw new Error("Solo se permite cambiar el estado a 'Entregado'.");
+  /*******************************************************
+   * Obtiene órdenes específicas o filtra por estado.
+   * @param orderId - ID de la orden (opcional).
+   * @param status - Estado de la orden (opcional).
+   */
+
+  async getOrdersByStatus(status: OrderStatus): Promise<Order[]> {
+    const redisKey = `order:status:${status}`;
+    // Intenta obtener las órdenes desde Redis
+    const cachedOrderIds = await redisClient.sMembers(redisKey);
+    if (cachedOrderIds.length > 0) {
+      console.log(`Órdenes obtenidas desde Redis: ${cachedOrderIds}`);
+      // Obtener las órdenes completas desde Redis
+      const orders = await Promise.all(
+        cachedOrderIds.map(async (id) => {
+          const orderKey = `order:${id}`;
+          const cachedOrder = await redisClient.get(orderKey);
+          return cachedOrder ? JSON.parse(cachedOrder) : null;
+        })
+      );
+      return orders.filter((order) => order !== null);
+    }
+    console.log(
+      "Órdenes no encontradas en Redis. Consultando la base de datos..."
+    );
+    // Si no están en Redis, consulta la base de datos
+    const orders = await this.orderRepository.find({ where: { status } });
+    // Almacena las órdenes en Redis para futuras consultas
+    const pipeline = redisClient.multi();
+    orders.forEach((order) => {
+      const orderKey = `order:${order.id}`;
+      pipeline.set(orderKey, JSON.stringify(order), { EX: 3600 });
+      pipeline.sAdd(redisKey, order.id);
+    });
+    await pipeline.exec();
+    console.log(`Órdenes almacenadas en Redis: ${orders.length}`);
+    return orders;
   }
-
-  // Validar que el estado actual sea "En tránsito"
-  if (order.status !== OrderStatus.EN_TRANSITO) {
-    return {
-      message:
-        "No se realizó ningún cambio. La orden no está en estado 'En tránsito'.",
-    };
-  }
-
-  // Actualiza el estado en la base de datos
-  await this.orderRepository.updateOrderStatus(orderId, newStatus);
-
-  // Obtener el estado anterior desde Redis
-  const redisKey = `order:${orderId}:status`;
-  const oldStatus = await redisClient.get(redisKey);
-
-  // Actualizar el estado en Redis con un TTL de 1 hora
-  await redisClient.set(redisKey, newStatus, { EX: 3600 }); // Expira en 3600 segundos (1 hora)
-
-  // Actualizar las listas de estados en Redis
-  if (oldStatus) {
-    const oldStatusKey = `order:status:${oldStatus}`;
-    await redisClient.sRem(oldStatusKey, orderId); // Elimina la orden del estado anterior
-  }
-  const newStatusKey = `order:status:${newStatus}`;
-  await redisClient.sAdd(newStatusKey, orderId); // Agrega la orden al nuevo estado
-
-  console.log(`Estado actualizado en Redis: ${newStatus}`);
-
-  return { message: "Estado actualizado exitosamente" };
-}
 }

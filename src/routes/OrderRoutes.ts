@@ -37,4 +37,11 @@ orderRouter.put('/:orderId/status', authenticateUser, isAdmin, (req, res) => ord
  */
 orderRouter.get('/', authenticateUser, isAdmin, (req, res) => orderController.getAllOrders(req, res));
 
+
+orderRouter.get(
+    "/:orderId/status",
+    authenticateUser, // Opcional: Puedes omitir esta línea si no requieres autenticación
+    (req, res) => orderController.getOrderStatusById(req, res)
+);
+
 export default orderRouter;

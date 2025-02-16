@@ -30,12 +30,12 @@ export class DriverService {
     async getAllDrivers(isAvailable?: boolean): Promise<any> {
         const drivers = await this.driverRepository.getAllDrivers(isAvailable);
 
-        // Transformar los datos para incluir solo la información relevante
         const formattedDrivers = drivers.map((driver) => ({
             id: driver.id,
             name: driver.name,
             vehicleCapacity: driver.vehicleCapacity,
             isAvailable: driver.isAvailable,
+            assignedWeight: driver.assignedWeight, // Asegúrate de incluir este campo
             assignedRoutes: driver.routes.map((route: Route) => ({
                 routeId: route.id,
                 origin: route.origin,
