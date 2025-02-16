@@ -5,8 +5,17 @@ const router = Router();
 
 /**
  * @openapi
+ * tags:
+ *   - name: Autenticación
+ *     description: Operaciones relacionadas con la Authenticación
+ */
+
+/**
+ * @openapi
  * /auth/register:
  *   post:
+ *     tags:
+ *       - Autenticación
  *     summary: Registra un nuevo usuario
  *     description: Crea un nuevo usuario en el sistema.
  *     requestBody:
@@ -68,6 +77,8 @@ router.post('/register', AuthController.register.bind(AuthController));
  * @openapi
  * /auth/login:
  *   post:
+ *     tags:
+ *       - Autenticación
  *     summary: Inicia sesión de un usuario
  *     description: Autentica a un usuario en el sistema.
  *     requestBody:

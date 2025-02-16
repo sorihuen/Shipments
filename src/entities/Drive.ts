@@ -16,6 +16,9 @@ export class Driver {
     @Column({ type: 'boolean', default: true }) // Disponibilidad del transportista
     isAvailable: boolean;
 
+    @Column({ type: "float", nullable: false, default: 0 }) // Peso total asignado
+    assignedWeight: number;
+
     // Relación muchos a muchos con Route
     @ManyToMany(() => Route, (route) => route.drivers)
     routes: Route[];
