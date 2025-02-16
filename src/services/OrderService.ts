@@ -194,8 +194,8 @@ export class OrderService {
   /**
    * Lista todas las órdenes, con opción de filtrar por estado.
    */
-  async getAllOrders(status?: OrderStatus) {
-    return await this.orderRepository.getAllOrders(status);
+  async getAllOrders(status?: string, startDate?: Date, endDate?: Date) {
+    return await this.orderRepository.getAllOrders(status, startDate, endDate);
   }
 
   /***********************************************************************
@@ -211,60 +211,65 @@ export class OrderService {
     if (!order) {
       throw new Error("Orden no encontrada.");
     }
-  
+
     // Validar que el nuevo estado sea "Entregado"
     if (newStatus !== OrderStatus.ENTREGADO) {
       throw new Error("Solo se permite cambiar el estado a 'Entregado'.");
     }
-  
+
     // Validar que la orden esté en estado "En tránsito"
     if (order.status !== OrderStatus.EN_TRANSITO) {
       return {
-        message: "No se realizó ningún cambio. La orden no está en estado 'En tránsito'.",
+        message:
+          "No se realizó ningún cambio. La orden no está en estado 'En tránsito'.",
       };
     }
-  
+
     // Verificar que la orden tenga una ruta y conductores asignados
-    if (!order.route || !order.route.drivers || order.route.drivers.length === 0) {
+    if (
+      !order.route ||
+      !order.route.drivers ||
+      order.route.drivers.length === 0
+    ) {
       throw new Error("La orden no tiene conductor asignado.");
     }
-  
+
     // Seleccionar el primer conductor asignado a la ruta
-    const driver = await this.driverRepository.findOneOrFail(order.route.drivers[0].id);
-  
+    const driver = await this.driverRepository.findOneOrFail(
+      order.route.drivers[0].id
+    );
+
     // Actualizar el peso asignado al conductor
     driver.assignedWeight -= order.weight;
-  
+
     // Actualizar el estado y la fecha de entrega de la orden en la base de datos
     await AppDataSource.getRepository(Order).update(orderId, {
       status: newStatus,
       deliveredAt: new Date(),
     });
-  
+
     // Guardar el conductor actualizado
     await this.driverRepository.save(driver);
-  
+
     // Actualizar el estado en Redis y sus listas
     const redisKey = `order:${orderId}:status`;
     const oldStatus = await redisClient.get(redisKey);
     await redisClient.set(redisKey, newStatus, { EX: 3600 });
-  
+
     if (oldStatus) {
       const oldStatusKey = `order:status:${oldStatus}`;
       await redisClient.sRem(oldStatusKey, orderId);
     }
-  
+
     const newStatusKey = `order:status:${newStatus}`;
     await redisClient.sAdd(newStatusKey, orderId);
-  
+
     // Invalidar la caché de la orden
     await redisClient.del(`order:${orderId}`);
-  
+
     return { message: "Estado actualizado exitosamente" };
   }
-  
-  
-  
+
   /*******************************************************
    * Obtiene órdenes específicas o filtra por estado.
    * @param orderId - ID de la orden (opcional).

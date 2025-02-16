@@ -71,5 +71,67 @@ export class DriverController {
                 }
             }
         }
+        async getDriverPerformanceMetrics(req: Request, res: Response) {
+            try {
+              const { startDate, endDate } = req.query;
+          
+              if (!startDate || !endDate) {
+                return res.status(400).json({ error: "startDate y endDate son obligatorios." });
+              }
+          
+              const parsedStartDate = new Date(startDate as string);
+              const parsedEndDate = new Date(endDate as string);
+          
+              if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+                return res.status(400).json({ error: "Fechas no válidas." });
+              }
+          
+              const metrics = await this.driverService.getPerformanceMetrics(parsedStartDate, parsedEndDate);
+          
+              res.status(200).json({
+                message: "Métricas obtenidas exitosamente",
+                metrics,
+              });
+            } catch (error) {
+              if (error instanceof Error) {
+                res.status(400).json({ error: error.message });
+              } else {
+                res.status(500).json({ error: "Ocurrió un error desconocido." });
+              }
+            }
+          }
+          async getDriverPerformanceMetricsById(req: Request, res: Response) {
+            try {
+              const { id } = req.params;
+              const { startDate, endDate } = req.query;
+        
+              if (!startDate || !endDate) {
+                return res.status(400).json({ error: "startDate y endDate son obligatorios." });
+              }
+        
+              const parsedStartDate = new Date(startDate as string);
+              const parsedEndDate = new Date(endDate as string);
+        
+              if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+                return res.status(400).json({ error: "Fechas no válidas." });
+              }
+        
+              const driverId = parseInt(id, 10);
+              const metrics = await this.driverService.getPerformanceMetricsByDriver(driverId, parsedStartDate, parsedEndDate);
+              
+              res.status(200).json({
+                message: "Métricas obtenidas exitosamente",
+                metrics,
+              });
+            } catch (error) {
+              if (error instanceof Error) {
+                res.status(400).json({ error: error.message });
+              } else {
+                res.status(500).json({ error: "Ocurrió un error desconocido." });
+              }
+            }
+          }
+          
+        
     
 }

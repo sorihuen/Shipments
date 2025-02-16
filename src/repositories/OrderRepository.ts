@@ -124,20 +124,53 @@ export class OrderRepository {
   /************************************************************************
    * Lista todas las órdenes con sus relaciones cargadas, con opción de filtrar por estado.
    */
-  async getAllOrders(status?: OrderStatus): Promise<Order[]> {
+  async getAllOrders(
+    status?: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Order[]> {
     const query = this.orderRepository
       .createQueryBuilder("order")
       .leftJoinAndSelect("order.user", "user")
       .leftJoinAndSelect("order.route", "route")
-      .leftJoinAndSelect("route.drivers", "drivers");
-
+      .leftJoinAndSelect("route.drivers", "drivers")
+      .where("1=1");
+  
+    // Filtrar por múltiples estados si se proporciona
     if (status) {
-      query.where("order.status = :status", { status });
+      // Se espera un string con estados separados por coma, ej: "En espera,En tránsito"
+      const statuses = status.split(",").map(s => s.trim());
+      query.andWhere("order.status IN (:...statuses)", { statuses });
     }
-
+  
+    // Filtrar por rango de fechas (ajustando la fecha de fin para incluir el día completo)
+    if (startDate && endDate) {
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+      query.andWhere(
+        "order.createdAt >= :startDate AND order.createdAt < :adjustedEndDate",
+        {
+          startDate: startDate.toISOString(),
+          adjustedEndDate: adjustedEndDate.toISOString(),
+        }
+      );
+    } else if (startDate) {
+      query.andWhere("order.createdAt >= :startDate", {
+        startDate: startDate.toISOString(),
+      });
+    } else if (endDate) {
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+      query.andWhere("order.createdAt < :adjustedEndDate", {
+        adjustedEndDate: adjustedEndDate.toISOString(),
+      });
+    }
+  
     return await query.getMany();
   }
-
+  
+  
+  
   /**********************************************************
    * Encuentra una orden por condiciones específicas.
    */
@@ -154,6 +187,4 @@ export class OrderRepository {
   async saveOrder(order: Order): Promise<Order> {
     return await this.orderRepository.save(order);
   }
- 
-
 }

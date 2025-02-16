@@ -26,5 +26,19 @@ driverRouter.post('/', authenticateUser, isAdmin, (req, res) => driverController
  */
 driverRouter.get('/', authenticateUser, isAdmin, (req, res) => driverController.getAllDrivers(req, res));
 
+/**
+ * Ruta para obtener métricas de desempeño de los transportistas.
+ * GET /api/drivers/metrics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ */
+driverRouter.get('/metrics', authenticateUser, isAdmin, (req, res) => driverController.getDriverPerformanceMetrics(req, res));
+
+
+/**
+ * Ruta para obtener métricas de desempeño de un driver específico.
+ * GET /api/drivers/:id/metrics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ */
+driverRouter.get('/:id/performance-metrics', authenticateUser, isAdmin, (req, res) => driverController.getDriverPerformanceMetricsById(req, res));
+
+
 
 export default driverRouter;

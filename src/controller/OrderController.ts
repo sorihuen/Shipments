@@ -77,35 +77,50 @@ export class OrderController {
      * Lista todas las órdenes, con opción de filtrar por estado.
      */
     async getAllOrders(req: Request, res: Response) {
-        try {
-            const { status } = req.query;
-
-            // Validar el estado si se proporciona
-            let parsedStatus: OrderStatus | undefined;
-            if (status) {
-                if (Object.values(OrderStatus).includes(status as OrderStatus)) {
-                    parsedStatus = status as OrderStatus;
-                } else {
-                    return res.status(400).json({ error: "Estado no válido." });
-                }
-            }
-
-            // Obtener las órdenes
-            const orders = await this.orderService.getAllOrders(parsedStatus);
-
-            res.status(200).json({
-                message: "Órdenes obtenidas exitosamente",
-                orders,
-            });
-        } catch (error) {
-            if (error instanceof Error) {
-                res.status(400).json({ error: error.message });
-            } else {
-                res.status(500).json({ error: "Ocurrió un error desconocido." });
-            }
+      try {
+        const { status, startDate, endDate } = req.query;
+    
+        // Convertir el parámetro 'status' a string
+        let parsedStatus: string | undefined;
+        if (status) {
+          parsedStatus = Array.isArray(status) ? status.join(",") : status as string;
         }
+    
+        // Validar las fechas si se proporcionan
+        let parsedStartDate: Date | undefined;
+        let parsedEndDate: Date | undefined;
+    
+        if (startDate) {
+          parsedStartDate = new Date(startDate as string);
+          if (isNaN(parsedStartDate.getTime())) {
+            return res.status(400).json({ error: "Fecha de inicio no válida." });
+          }
+        }
+    
+        if (endDate) {
+          parsedEndDate = new Date(endDate as string);
+          if (isNaN(parsedEndDate.getTime())) {
+            return res.status(400).json({ error: "Fecha de fin no válida." });
+          }
+        }
+    
+        // Llamar al servicio pasando parsedStatus como string
+        const orders = await this.orderService.getAllOrders(parsedStatus, parsedStartDate, parsedEndDate);
+    
+        res.status(200).json({
+          message: "Órdenes obtenidas exitosamente",
+          orders,
+        });
+      } catch (error) {
+        if (error instanceof Error) {
+          res.status(400).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: "Ocurrió un error desconocido." });
+        }
+      }
     }
-
+    
+    
     /**
      * Asigna una ruta a una orden específica.
      */
