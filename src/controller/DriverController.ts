@@ -155,15 +155,13 @@ export class DriverController {
   async updateDriverAvailability(req: Request, res: Response) {
     try {
       // Extraer el ID del conductor desde los parámetros de la solicitud
-      const { id } = req.params; // Usa "id" en lugar de "driverId"
-      console.log("ID extraído de req.params:", id); // Depuración: Verifica qué valor se está recibiendo
+      const { id } = req.params; 
+      
   
       // Validar que el ID del conductor sea un número entero positivo
-      const driverId = Number(id); // Convertir el ID a número
-      console.log("ID convertido a número:", driverId); // Depuración: Verifica si la conversión fue exitosa
-  
+      const driverId = Number(id); 
+
       if (isNaN(driverId) || driverId <= 0) {
-        console.error("ID inválido:", id); // Depuración: Registra el valor inválido
         return res.status(400).json({
           error: "El ID del conductor debe ser un número entero positivo válido.",
         });
@@ -173,7 +171,6 @@ export class DriverController {
        * Llamar al servicio para actualizar la disponibilidad del conductor.
        * El servicio verifica si el conductor tiene órdenes activas o peso asignado.
        */
-      console.log("Llamando al servicio con ID:", driverId); // Depuración: Verifica el ID enviado al servicio
       const result = await this.driverService.updateDriverAvailability(driverId);
   
       /**
@@ -183,13 +180,11 @@ export class DriverController {
        * - Para otros errores, devolver 400 Bad Request.
        */
       if (result.success) {
-        console.log("Conductor actualizado correctamente:", result); // Depuración: Registro de éxito
+        
         res.status(200).json(result); // Conductor actualizado correctamente
       } else if (result.message.includes("órdenes activas")) {
-        console.warn("Conductor con órdenes activas:", result); // Depuración: Registro de conflicto
         res.status(409).json(result); // Conflicto: conductor tiene órdenes activas
       } else {
-        console.error("Error en la lógica del servicio:", result); // Depuración: Registro de otros errores
         res.status(400).json(result); // Otros errores
       }
     } catch (error) {
@@ -199,10 +194,8 @@ export class DriverController {
        * - Para errores desconocidos, registrar el error en los logs y devolver un mensaje genérico con código 500.
        */
       if (error instanceof Error) {
-        console.error("Error capturado:", error.message); // Depuración: Registro del error capturado
         res.status(400).json({ error: error.message });
       } else {
-        console.error("Error desconocido:", error); // Depuración: Registro de errores desconocidos
         res.status(500).json({ error: "Ocurrió un error inesperado en el servidor." });
       }
     }
