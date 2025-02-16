@@ -132,4 +132,10 @@ export class RouteController {
             }
         }
     }
+    /**
+     * Verifica si un conductor ha entregado todas sus órdenes y actualiza su estado a disponible.
+     * @param req - Solicitud HTTP.
+     * @param res - Respuesta HTTP.
+     */
+    
 }

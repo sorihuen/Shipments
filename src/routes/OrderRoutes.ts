@@ -13,8 +13,17 @@ const orderRouter = Router();
 
 /**
  * @openapi
+ * tags:
+ *   - name: Orders
+ *     description: Operaciones relacionadas con la gestión de órdenes de envío
+ */
+
+/**
+ * @openapi
  * /api/orders:
  *   post:
+ *     tags:
+ *       - Orders
  *     summary: Crea una nueva orden de envío
  *     description: Crea una nueva orden de envío en el sistema. Requiere autenticación.
  *     security:
@@ -108,6 +117,8 @@ orderRouter.post('/', authenticateUser, (req, res) => orderController.createOrde
  * @openapi
  * /api/orders/{orderId}/assign:
  *   post:
+ *     tags:
+ *       - Orders
  *     summary: Asigna una ruta a una orden específica
  *     description: Asigna una ruta específica a una orden. Requiere autenticación y rol de administrador.
  *     security:
@@ -156,6 +167,8 @@ orderRouter.post('/:orderId/assign', authenticateUser, isAdmin, (req, res) => or
  * @openapi
  * /api/orders/{orderId}/status:
  *   put:
+ *     tags:
+ *       - Orders
  *     summary: Actualiza el estado de una orden específica
  *     description: Actualiza el estado de una orden específica a "Entregado". Requiere autenticación y rol de administrador.
  *     security:
@@ -209,6 +222,8 @@ orderRouter.put('/:orderId/status', authenticateUser, isAdmin, (req, res) => ord
  * @openapi
  * /api/orders:
  *   get:
+ *     tags:
+ *       - Orders
  *     summary: Lista todas las órdenes
  *     description: Devuelve una lista de todas las órdenes disponibles, con opción de filtrar por estado y rango de fechas. Requiere autenticación y rol de administrador.
  *     security:
@@ -270,6 +285,8 @@ orderRouter.get('/', authenticateUser, isAdmin, (req, res) => orderController.ge
  * @openapi
  * /api/orders/{orderId}/status:
  *   get:
+ *     tags:
+ *       - Orders
  *     summary: Obtiene el estado de una orden específica
  *     description: Devuelve el estado actual de una orden específica, incluyendo información del transportista asignado (si existe). Requiere autenticación.
  *     security:

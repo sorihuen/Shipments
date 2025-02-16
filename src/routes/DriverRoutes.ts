@@ -1,9 +1,9 @@
-import { Router } from 'express';
-import { DriverController } from '../controller/DriverController';
-import { DriverService } from '../services/DriveService';
-import { DriverRepository } from '../repositories/DriverRepository';
-import { authenticateUser } from '../middlewares/auth.middleware';
-import { isAdmin } from '../middlewares/role.middleware';
+import { Router } from "express";
+import { DriverController } from "../controller/DriverController";
+import { DriverService } from "../services/DriveService";
+import { DriverRepository } from "../repositories/DriverRepository";
+import { authenticateUser } from "../middlewares/auth.middleware";
+import { isAdmin } from "../middlewares/role.middleware";
 
 // Instancia del repositorio, servicio y controlador
 const driverRepository = new DriverRepository();
@@ -12,11 +12,19 @@ const driverController = new DriverController(driverService);
 
 // Definición del router
 const driverRouter = Router();
+/**
+ * @openapi
+ * tags:
+ *   - name: Driver
+ *     description: Operaciones relacionadas con la gestión de Drivers
+ */
 
 /**
  * @openapi
  * /api/drivers:
  *   post:
+ *     tags:
+ *       - Driver
  *     summary: Crea un nuevo transportista
  *     description: Crea un nuevo transportista en el sistema. Requiere autenticación y rol de administrador.
  *     security:
@@ -59,12 +67,16 @@ const driverRouter = Router();
  *       500:
  *         description: Error interno del servidor
  */
-driverRouter.post('/', authenticateUser, isAdmin, (req, res) => driverController.createDriver(req, res));
+driverRouter.post("/", authenticateUser, isAdmin, (req, res) =>
+  driverController.createDriver(req, res)
+);
 
 /**
  * @openapi
  * /api/drivers:
  *   get:
+ *     tags:
+ *       - Driver
  *     summary: Lista todos los transportistas
  *     description: Devuelve una lista de todos los transportistas disponibles. Opcionalmente, se puede filtrar por disponibilidad. Requiere autenticación y rol de administrador.
  *     security:
@@ -100,12 +112,16 @@ driverRouter.post('/', authenticateUser, isAdmin, (req, res) => driverController
  *       500:
  *         description: Error interno del servidor
  */
-driverRouter.get('/', authenticateUser, isAdmin, (req, res) => driverController.getAllDrivers(req, res));
+driverRouter.get("/", authenticateUser, isAdmin, (req, res) =>
+  driverController.getAllDrivers(req, res)
+);
 
 /**
  * @openapi
  * /api/drivers/metrics:
  *   get:
+ *     tags:
+ *       - Driver
  *     summary: Obtiene métricas de desempeño de los transportistas
  *     description: Devuelve métricas de desempeño de todos los transportistas en un rango de fechas específico. Requiere autenticación y rol de administrador.
  *     security:
@@ -155,12 +171,16 @@ driverRouter.get('/', authenticateUser, isAdmin, (req, res) => driverController.
  *       500:
  *         description: Error interno del servidor
  */
-driverRouter.get('/metrics', authenticateUser, isAdmin, (req, res) => driverController.getDriverPerformanceMetrics(req, res));
+driverRouter.get("/metrics", authenticateUser, isAdmin, (req, res) =>
+  driverController.getDriverPerformanceMetrics(req, res)
+);
 
 /**
  * @openapi
  * /api/drivers/{id}/performance-metrics:
  *   get:
+ *     tags:
+ *       - Driver
  *     summary: Obtiene métricas de desempeño de un transportista específico
  *     description: Devuelve métricas de desempeño de un transportista específico en un rango de fechas. Requiere autenticación y rol de administrador.
  *     security:
@@ -213,6 +233,17 @@ driverRouter.get('/metrics', authenticateUser, isAdmin, (req, res) => driverCont
  *       500:
  *         description: Error interno del servidor
  */
-driverRouter.get('/:id/performance-metrics', authenticateUser, isAdmin, (req, res) => driverController.getDriverPerformanceMetricsById(req, res));
+driverRouter.get(
+  "/:id/performance-metrics",
+  authenticateUser,
+  isAdmin,
+  (req, res) => driverController.getDriverPerformanceMetricsById(req, res)
+);
+
+driverRouter.put("/:id/availability", authenticateUser, isAdmin, (req, res) =>
+  driverController.updateDriverAvailability(req, res)
+);
+
+
 
 export default driverRouter;

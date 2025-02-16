@@ -13,8 +13,17 @@ const routeRouter = Router();
 
 /**
  * @openapi
+ * tags:
+ *   - name: Routes
+ *     description: Operaciones relacionadas con la gestión de rutas de envío
+ */
+
+/**
+ * @openapi
  * /api/routes:
  *   post:
+ *     tags:
+ *       - Routes
  *     summary: Crea una nueva ruta
  *     description: Crea una nueva ruta en el sistema. Requiere autenticación y rol de administrador.
  *     security:
@@ -64,12 +73,16 @@ const routeRouter = Router();
  *       500:
  *         description: Error interno del servidor
  */
-routeRouter.post('/', authenticateUser, isAdmin, (req, res) => routeController.createRoute(req, res));
+routeRouter.post('/', authenticateUser, isAdmin, (req, res) =>
+  routeController.createRoute(req, res)
+);
 
 /**
  * @openapi
  * /api/routes:
  *   get:
+ *     tags:
+ *       - Routes
  *     summary: Obtiene todas las rutas
  *     description: Devuelve una lista de todas las rutas disponibles. Requiere autenticación y rol de administrador.
  *     security:
@@ -99,12 +112,16 @@ routeRouter.post('/', authenticateUser, isAdmin, (req, res) => routeController.c
  *       500:
  *         description: Error interno del servidor
  */
-routeRouter.get('/', authenticateUser, isAdmin, (req, res) => routeController.getAllRoutes(req, res));
+routeRouter.get('/', authenticateUser, isAdmin, (req, res) =>
+  routeController.getAllRoutes(req, res)
+);
 
 /**
  * @openapi
  * /api/routes/{routeId}:
  *   get:
+ *     tags:
+ *       - Routes
  *     summary: Obtiene una ruta por ID
  *     description: Devuelve los detalles de una ruta específica basada en su ID. Requiere autenticación y rol de administrador.
  *     security:
@@ -143,12 +160,16 @@ routeRouter.get('/', authenticateUser, isAdmin, (req, res) => routeController.ge
  *       500:
  *         description: Error interno del servidor
  */
-routeRouter.get('/:routeId', authenticateUser, isAdmin, (req, res) => routeController.getRouteById(req, res));
+routeRouter.get('/:routeId', authenticateUser, isAdmin, (req, res) =>
+  routeController.getRouteById(req, res)
+);
 
 /**
  * @openapi
  * /api/routes/{routeId}/assign-driver:
  *   post:
+ *     tags:
+ *       - Routes
  *     summary: Asigna un transportista a una ruta
  *     description: Asigna un transportista a una ruta específica. Requiere autenticación y rol de administrador.
  *     security:
@@ -190,12 +211,19 @@ routeRouter.get('/:routeId', authenticateUser, isAdmin, (req, res) => routeContr
  *       500:
  *         description: Error interno del servidor
  */
-routeRouter.post('/:routeId/assign-driver', authenticateUser, isAdmin, (req, res) => routeController.assignDriverToRoute(req, res));
+routeRouter.post(
+  '/:routeId/assign-driver',
+  authenticateUser,
+  isAdmin,
+  (req, res) => routeController.assignDriverToRoute(req, res)
+);
 
 /**
  * @openapi
  * /api/routes/{routeId}:
  *   delete:
+ *     tags:
+ *       - Routes
  *     summary: Elimina una ruta
  *     description: Elimina una ruta específica basada en su ID. Requiere autenticación y rol de administrador.
  *     security:
@@ -218,11 +246,15 @@ routeRouter.post('/:routeId/assign-driver', authenticateUser, isAdmin, (req, res
  *                 message:
  *                   type: string
  *                   description: Mensaje de éxito
+ *       400:
+ *         description: ID de ruta inválido
  *       404:
  *         description: Ruta no encontrada
  *       500:
  *         description: Error interno del servidor
  */
-routeRouter.delete('/:routeId', authenticateUser, isAdmin, (req, res) => routeController.deleteRoute(req, res));
+routeRouter.delete('/:routeId', authenticateUser, isAdmin, (req, res) =>
+  routeController.deleteRoute(req, res)
+);
 
 export default routeRouter;

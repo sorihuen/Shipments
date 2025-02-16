@@ -102,7 +102,7 @@ export class OrderRepository {
       .createQueryBuilder("order")
       .leftJoinAndSelect("order.driver", "driver")
       .leftJoinAndSelect("order.route", "route")
-      .leftJoinAndSelect("route.drivers", "drivers") // 🔥 Agregar conductores de la ruta
+      .leftJoinAndSelect("route.drivers", "drivers")
       .where("order.id = :orderId", { orderId })
       .getOne();
   }
