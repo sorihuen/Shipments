@@ -37,59 +37,90 @@ export class OrderService {
     senderName: string,
     senderPhone: string,
     senderEmail: string
-  ) {
+) {
     // Validar campos obligatorios
-    if (
-      !dimensions ||
-      !dimensions.width ||
-      !dimensions.height ||
-      !dimensions.length
-    ) {
-      throw new Error(
-        "Las dimensiones del paquete son requeridas y deben incluir 'width', 'height' y 'length'"
-      );
+    if (!dimensions || !dimensions.width || !dimensions.height || !dimensions.length) {
+        throw new Error(
+            "Las dimensiones del paquete son requeridas y deben incluir 'width', 'height' y 'length'"
+        );
     }
 
-    // Validar direcciones
-    const isDestinationAddressValid = await validateAddress(destinationAddress);
-    if (!isDestinationAddressValid) {
-      throw new Error("La dirección de destino no es válida.");
-    }
-    const isReturnAddressValid = await validateAddress(returnAddress);
-    if (!isReturnAddressValid) {
-      throw new Error("La dirección de retorno no es válida.");
+    // Validar direcciones con la nueva estructura de respuesta
+    const destinationValidation = await validateAddress(destinationAddress);
+    if (!destinationValidation.isValid) {
+        throw new Error(`Error en dirección de destino: ${destinationValidation.reason}`);
     }
 
-    // Crear la orden en la base de datos
-    const order = await this.orderRepository.createOrder(
-      user,
-      weight,
-      dimensions,
-      productType,
-      destinationAddress,
-      returnAddress,
-      recipientName,
-      recipientPhone,
-      recipientEmail,
-      senderName,
-      senderPhone,
-      senderEmail
-    );
+    const returnValidation = await validateAddress(returnAddress);
+    if (!returnValidation.isValid) {
+        throw new Error(`Error en dirección de retorno: ${returnValidation.reason}`);
+    }
 
-    // Almacenar el estado inicial de la orden en Redis
-    const redisKey = `order:${order.id}:status`;
-    const initialStatus = "En espera"; // Estado inicial predeterminado
-    await redisClient.set(redisKey, initialStatus, { EX: 3600 }); // TTL de 1 hora
+    // Validaciones adicionales de negocio
+    if (weight <= 0) {
+        throw new Error("El peso debe ser mayor que 0");
+    }
 
-    // Opcional: Almacenar la orden en una lista específica para su estado
-    const statusKey = `order:status:${initialStatus}`;
-    await redisClient.sAdd(statusKey, order.id); // Usamos un conjunto (SET) para evitar duplicados
-    console.log(
-      `Orden creada y estado inicial almacenado en Redis: ${initialStatus}`
-    );
+    if (!productType) {
+        throw new Error("El tipo de producto es requerido");
+    }
 
-    return order;
-  }
+    // Validar formato de correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+        throw new Error("El correo electrónico del destinatario no es válido");
+    }
+    if (!emailRegex.test(senderEmail)) {
+        throw new Error("El correo electrónico del remitente no es válido");
+    }
+
+    // Validar formato de teléfono (asumiendo formato colombiano)
+    const phoneRegex = /^3\d{9}$/;
+    if (!phoneRegex.test(recipientPhone)) {
+        throw new Error("El teléfono del destinatario debe ser un celular válido de Colombia");
+    }
+    if (!phoneRegex.test(senderPhone)) {
+        throw new Error("El teléfono del remitente debe ser un celular válido de Colombia");
+    }
+
+    try {
+        // Crear la orden en la base de datos
+        const order = await this.orderRepository.createOrder(
+            user,
+            weight,
+            dimensions,
+            productType,
+            destinationAddress,
+            returnAddress,
+            recipientName,
+            recipientPhone,
+            recipientEmail,
+            senderName,
+            senderPhone,
+            senderEmail
+        );
+
+        // Almacenar el estado inicial de la orden en Redis
+        const redisKey = `order:${order.id}:status`;
+        const initialStatus = "En espera";
+        await redisClient.set(redisKey, initialStatus, { EX: 3600 }); // TTL de 1 hora
+
+        // Almacenar la orden en una lista específica para su estado
+        const statusKey = `order:status:${initialStatus}`;
+        await redisClient.sAdd(statusKey, order.id);
+
+        console.log(`Orden ${order.id} creada con éxito - Estado: ${initialStatus}`);
+        console.log('Validaciones de dirección:', {
+            destino: destinationValidation,
+            retorno: returnValidation
+        });
+
+        return order;
+    } catch (error) {
+        console.error('Error al crear la orden:', error);
+        throw new Error('No se pudo crear la orden. Por favor, intente nuevamente.');
+    }
+}
   /**
    * Asigna una ruta a una orden específica y actualiza su estado en Redis.
    */

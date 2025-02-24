@@ -1,4 +1,4 @@
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 import { sign, SignOptions } from "jsonwebtoken";
 import { User } from "../../entities/User";
 import { UserRepository } from "../../repositories/UserRepository";

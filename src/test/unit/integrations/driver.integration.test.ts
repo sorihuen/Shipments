@@ -15,6 +15,7 @@ class FakeDriverRepository implements Partial<DriverRepository> {
       name,
       vehicleCapacity,
       isAvailable: true,
+      assignedWeight: 0,
       routes: [],
       orders: []
     };
