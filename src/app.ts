@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import express, { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
-import authRoutes from "../src/routes/AuthRoutes";
-import orderRoutes from "../src/routes/OrderRoutes";
-import routeRouter from "../src/routes/RoutRoutes";
-import driveRoute from "../src/routes/DriverRoutes";
-import { setupSwagger } from "../src/Config/swagger";
+import authRoutes from "./routes/AuthRoutes";
+import orderRoutes from "./routes/OrderRoutes";
+import routeRouter from "./routes/RoutRoutes";
+import driveRoute from "./routes/DriverRoutes";
+import { setupSwagger } from "./Config/swagger";
 import { AppDataSource } from "./Config/data-source";
 import { connectRedis } from './Config/redis.config';
 dotenv.config();

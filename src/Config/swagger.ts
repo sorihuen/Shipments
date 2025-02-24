@@ -2,8 +2,6 @@ import { Application } from "express";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import dotenv from "dotenv";
-import path from "path";
-
 dotenv.config();
 
 const options: swaggerJSDoc.Options = {
