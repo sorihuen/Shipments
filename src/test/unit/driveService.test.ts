@@ -32,6 +32,7 @@ describe('DriverService', () => {
         name: driverName,
         vehicleCapacity,
         isAvailable: true,
+        assignedWeight: 0,
         routes: [],
         orders: []
       };
@@ -73,6 +74,7 @@ describe('DriverService', () => {
           name: 'John Doe',
           vehicleCapacity: 1000,
           isAvailable: true,
+          assignedWeight: 0,
           routes: [
             {
               id: 1,
@@ -90,6 +92,7 @@ describe('DriverService', () => {
           name: 'Jane Smith',
           vehicleCapacity: 1500,
           isAvailable: false,
+          assignedWeight: 0,
           routes: [
             {
               id: 2,
@@ -145,6 +148,7 @@ describe('DriverService', () => {
           name: 'John Doe',
           vehicleCapacity: 1000,
           isAvailable: true,
+          assignedWeight: 0,
           routes: [],
           orders: []
         }

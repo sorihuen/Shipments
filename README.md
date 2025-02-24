@@ -20,15 +20,16 @@ Esta API RESTful está diseñada para gestionar operaciones relacionadas con env
 - **class-validator**: Validaciones robustas
 - **Swagger**: Documentación interactiva de la API
 
-## ✅ Requisitos previos
 
+## ✅ Requisitos previos
 Antes de ejecutar este proyecto, asegúrate de tener instalado:
 
-- **Node.js**: Versión ≥ 20.x
-- **npm**: Gestor de paquetes de Node.js
-- **PostgreSQL**: Base de datos relacional
-- **Redis**: Para caché
-- **Git**: Para clonar el repositorio
+Node.js: Versión ≥ 20.x (solo para desarrollo sin Docker)
+npm: Gestor de paquetes de Node.js (solo para desarrollo sin Docker)
+Docker y Docker Compose: Para ejecutar la aplicación en contenedores
+PostgreSQL: Base de datos relacional (si no usas contenedores para la BD)
+Redis: Para caché (si no usas contenedores para Redis)
+Git: Para clonar el repositorio
 
 ## 🚀 Instalación
 
@@ -75,7 +76,26 @@ Para ejecutar el proyecto con recarga automática:
 
 ```bash
 npm run dev
+
 ```
+## 🐳 Ejecución con Docker
+
+Si prefieres usar Docker para tener un entorno aislado y reproducible, sigue estos pasos:
+
+1. Configurar variables de entorno
+Asegúrate de tener el archivo .env configurado en la raíz (igual que en la sección de Modo Local).
+
+2. Construir y levantar los contenedores
+El proyecto incluye un Dockerfile optimizado en dos etapas y un archivo docker-compose.yml. Para construir la imagen y levantar la aplicación junto con Redis, ejecuta:
+
+
+```bash
+docker-compose up --build
+```
+Este comando hará lo siguiente:
+
+Etapa de construcción: Instala las dependencias, compila el proyecto (generando la carpeta dist) y copia los archivos necesarios.
+Etapa final: Levanta la aplicación usando la imagen optimizada y expone el puerto 3000.
 
 ## 🧪 Pruebas
 
